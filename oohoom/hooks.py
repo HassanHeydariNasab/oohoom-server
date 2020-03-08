@@ -15,10 +15,10 @@ def auth(req, resp, resource, params):
     req.context.user_id = ObjectId(user_id)
 
 
-def validate_req(req, resp, resource, params, schema, require_all=True):
+def validate_req(req, resp, resource, params, schema: dict, require_all=True):
     if req.media is None:
         raise falcon.errors.HTTPUnsupportedMediaType(description="json is required")
-    V = Validator(schema, require_all=True)
+    V = Validator(schema, require_all=require_all)
     if not V.validate(req.media):
         raise falcon.errors.HTTPBadRequest(description=V.errors)
 
