@@ -10,12 +10,13 @@ db.create_collection(
     validator={
         "$jsonSchema": {
             "bsonType": "object",
-            "required": ["mobile", "name", "role"],
+            "required": ["mobile", "name", "role", "state", "skills"],
             "properties": {
                 "mobile": {"bsonType": "string", "minLength": 5, "maxLength": 30},
                 "name": user_name,
                 "role": {"bsonType": "string", "enum": ["employer", "employee"]},
                 "state": {"bsonType": "string", "enum": ["idle", "busy"]},
+                "skills": {"bsonType": "array"},
             },
         }
     },

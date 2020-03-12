@@ -1,7 +1,7 @@
 import falcon
 from cerberus import Validator
 from bson.objectid import ObjectId
-from jwt_user_id import token_to_user
+from .jwt_user_id import token_to_user
 
 
 def auth(req, resp, resource, params):

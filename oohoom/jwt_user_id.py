@@ -1,5 +1,5 @@
 import jwt
-from local_config import SECRET
+from .local_config import SECRET
 
 
 def user_to_token(user_id: str) -> str:

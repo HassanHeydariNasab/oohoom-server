@@ -16,6 +16,7 @@ bcrypt = "*"
 cerberus = ""
 kavenegar = "*"
 pyjwt = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.8"

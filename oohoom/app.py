@@ -2,16 +2,17 @@ import os
 import string
 import datetime
 import falcon
-import r_code
-from jwt_user_id import user_to_token
+from . import r_code
+from .jwt_user_id import user_to_token
 from random import SystemRandom
 from pymongo import MongoClient
 from kavenegar import KavenegarAPI
 from bson.objectid import ObjectId
 from pymongo.collection import ReturnDocument
-from local_config import KAVENEGAR_APIKEY
-from utils import normalized_mobile
-from hooks import auth, validate_req
+from .local_config import KAVENEGAR_APIKEY
+from .utils import normalized_mobile
+from .hooks import auth, validate_req
+from .constants import LIMIT
 
 client = MongoClient()
 db = client.oohoom
@@ -31,9 +32,15 @@ class UserResource(object):
     @falcon.before(
         validate_req,
         {
-            "mobile": {"type": "string", "minlength": 5, "maxlength": 30},
             "code": {"type": "string"},
+            "mobile": {"type": "string", "minlength": 5, "maxlength": 30},
             "name": {"type": "string", "maxlength": 36, "minlength": 1},
+            "role": {"type": "string", "allowed": ["employer", "employee"]},
+            "skills": {
+                "type": "list",
+                "schema": {"type": "string", "minlength": 1, "maxlength": 36},
+                "maxlength": 30,
+            },
         },
     )
     def on_post(self, req, resp):
@@ -50,7 +57,13 @@ class UserResource(object):
         ):
             raise falcon.errors.HTTPConflict(description="user already exists")
         result = db.users.insert_one(
-            {"mobile": req.media.get("mobile"), "name": req.media.get("name")}
+            {
+                "mobile": req.media.get("mobile"),
+                "name": req.media.get("name"),
+                "role": req.media.get("role"),
+                "state": "idle",
+                "skills": req.media.get("skills"),
+            }
         )
         token = user_to_token(str(result.inserted_id))
         resp.media = {"token": token}
@@ -114,12 +127,49 @@ class TokenResource(object):
         resp.media = {"token": token}
 
 
-app = falcon.API()
+class EmployeesResource(object):
+    @falcon.before(auth)
+    def on_get(self, req, resp):
+        state = req.get_param("state", default="all")
+        if state == "all":
+            filter_ = {"role": "employee", "state": state}
+        elif state in ["idle", "busy"]:
+            filter_ = {"role": "employee", "state": state}
+        else:
+            raise falcon.errors.HTTPInvalidParam(
+                "state should be all or idle or busy", "state"
+            )
+        employees = db.users.find(
+            filter_,
+            skip=req.get_param("skip", default=0),
+            limit=req.get_param("limit", default=LIMIT),
+            projection={"_id": 1, "name": 1, "state": 1},
+        )
+        # TODO: sort employees by rank
+        for employee in employees:
+            employee["_id"] = str(employee.get("_id"))
+        resp.media = employees
 
-user = UserResource()
-code = CodeResource()
-token = TokenResource()
 
-app.add_route("/v1/user", user)
-app.add_route("/v1/code", code)
-app.add_route("/v1/token", token)
+class TestResource(object):
+    def on_get(self, req, resp):
+        resp.media = {"ok": True}
+
+
+def create_app():
+    app = falcon.API()
+    test = TestResource()
+    user = UserResource()
+    code = CodeResource()
+    token = TokenResource()
+    employees = EmployeesResource()
+
+    app.add_route("/v1/test", test)
+    app.add_route("/v1/user", user)
+    app.add_route("/v1/code", code)
+    app.add_route("/v1/token", token)
+    app.add_route("/v1/employees", employees)
+    return app
+
+
+app = create_app()
