@@ -14,8 +14,11 @@ from .utils import normalized_mobile
 from .hooks import auth, validate_req
 from .constants import LIMIT
 
+
 client = MongoClient()
-db = client.oohoom
+db = client.test_oohoom
+
+global_is_testing = False
 
 
 class UserResource(object):
@@ -92,8 +95,9 @@ class CodeResource(object):
                 "receptor": req.media.get("mobile"),
                 "message": "oohoom: " + code,
             }
-            response = api.sms_send(params)
-            print(response)
+            if not global_is_testing:
+                response = api.sms_send(params)
+                print(response)
         except Exception as e:
             print("Error [kavenegar]: ", e)
             raise falcon.HTTPInternalServerError()
@@ -156,8 +160,18 @@ class TestResource(object):
         resp.media = {"ok": True}
 
 
-def create_app():
-    app = falcon.API()
+def create_app(is_testing=False):
+    app = falcon.App()
+    global db, global_is_testing
+    # create_app was called within a test
+    if is_testing:
+        client = MongoClient()
+        db = client.test_oohoom
+        # in order to use inside of Resource
+        global_is_testing = True
+    else:
+        client = MongoClient()
+        db = client.oohoom
     test = TestResource()
     user = UserResource()
     code = CodeResource()
