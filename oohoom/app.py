@@ -18,7 +18,8 @@ from .constants import LIMIT
 client = MongoClient()
 db = client.test_oohoom
 
-global_is_testing = False
+is_debugging = False  # manually enable testing situation (db,...)
+global_is_testing = is_debugging
 
 
 class UserResource(object):
@@ -136,18 +137,21 @@ class EmployeesResource(object):
     def on_get(self, req, resp):
         state = req.get_param("state", default="all")
         if state == "all":
-            filter_ = {"role": "employee", "state": state}
+            filter_ = {"role": "employee"}
         elif state in ["idle", "busy"]:
             filter_ = {"role": "employee", "state": state}
         else:
             raise falcon.errors.HTTPInvalidParam(
                 "state should be all or idle or busy", "state"
             )
-        employees = db.users.find(
-            filter_,
-            skip=req.get_param("skip", default=0),
-            limit=req.get_param("limit", default=LIMIT),
-            projection={"_id": 1, "name": 1, "state": 1},
+
+        employees = list(
+            db.users.find(
+                filter_,
+                skip=req.get_param("skip", default=0),
+                limit=req.get_param("limit", default=LIMIT),
+                projection={"_id": 1, "name": 1, "state": 1},
+            )
         )
         # TODO: sort employees by rank
         for employee in employees:
@@ -165,11 +169,13 @@ def create_app(is_testing=False):
     global db, global_is_testing
     # create_app was called within a test
     if is_testing:
+        print("test db")
         client = MongoClient()
         db = client.test_oohoom
         # in order to use inside of Resource
         global_is_testing = True
     else:
+        print("production db")
         client = MongoClient()
         db = client.oohoom
     test = TestResource()
@@ -186,4 +192,4 @@ def create_app(is_testing=False):
     return app
 
 
-app = create_app()
+app = create_app(is_testing=is_debugging)

@@ -29,7 +29,7 @@ class TestRegistration:
 
     def test_post_code(self, oohoom):
         resp = oohoom.simulate_post("/v1/code", json={"mobile": MOBILE})
-        assert "is_user_exists" in resp.json
+        assert resp.json == {"is_user_exists": False}
 
     def test_post_user(self, oohoom):
         code = r_code.r_mobile_code.get(MOBILE)
@@ -44,9 +44,29 @@ class TestRegistration:
                 "skills": [],
             },
         )
-        assert "token" in resp.json.keys()
+        assert "token" in resp.json
+        g["token"] = resp.json["token"]
+
+    def test_post_code_again(self, oohoom):
+        resp = oohoom.simulate_post("/v1/code", json={"mobile": MOBILE})
+        assert resp.json == {"is_user_exists": True}
+
+    def test_post_token(self, oohoom):
+        code = r_code.r_mobile_code.get(MOBILE)
+        assert code
+        resp = oohoom.simulate_post(
+            "/v1/token", json={"code": code.decode(), "mobile": MOBILE},
+        )
+        assert "token" in resp.json
         g["token"] = resp.json["token"]
 
     def test_get_user(self, oohoom):
         resp = oohoom.simulate_get("/v1/user", headers={"Authorization": g["token"]})
         assert "_id" in resp.json
+
+    def test_get_employees(self, oohoom):
+        resp = oohoom.simulate_get(
+            "/v1/employees", headers={"Authorization": g["token"]}
+        )
+        assert type(resp.json) == list
+        assert len(resp.json) == 1
