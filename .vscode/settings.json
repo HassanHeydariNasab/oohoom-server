@@ -4,7 +4,11 @@
     "python.formatting.provider": "black",
     "python.linting.flake8Enabled": true,
     "python.testing.pytestArgs": [
-        "test"
+        "test",
+        "--cov",
+        "-vvv",
+        "--cov-report",
+        "xml:cov.xml"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
