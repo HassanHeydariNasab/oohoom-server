@@ -41,8 +41,8 @@ def init(is_testing=False):
         },
     )
 
-    db.users.create_index('mobile', unique=True)
-    db.users.create_index('name', unique=True)
+    db.users.create_index("mobile", unique=True)
+    db.users.create_index("name", unique=True)
 
     db.create_collection(
         "projects",
@@ -53,8 +53,8 @@ def init(is_testing=False):
                     "title",
                     "description",
                     "employer",
-                    "employee",
                     "state",
+                    "skills",
                     "creation_datetime",
                 ],
                 "properties": {
@@ -80,7 +80,11 @@ def init(is_testing=False):
                             "name": user_name,
                         },
                     },
-                    "state": {"bsonType": "string", "enum": ["new", "done", "closed"],},
+                    "skills": {"bsonType": "array"},
+                    "state": {
+                        "bsonType": "string",
+                        "enum": ["new", "assigned", "done", "closed"],
+                    },
                     "creation_datetime": {"bsonType": "date"},
                 },
             }

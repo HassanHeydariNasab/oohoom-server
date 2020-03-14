@@ -1,9 +1,9 @@
+import pytest
 from falcon import testing
 from pymongo import MongoClient
-import pytest
+
 from ..oohoom import app, r_code
 from ..oohoom.init import mongodb
-
 
 MOBILE = "00989389742591"
 
@@ -39,7 +39,7 @@ class TestRegistration:
             json={
                 "code": code.decode(),
                 "mobile": MOBILE,
-                "name": "hassan",
+                "name": "an_employee",
                 "role": "employee",
                 "skills": [],
             },
@@ -73,13 +73,13 @@ class TestRegistration:
 
     def test_get_user_by_name(self, oohoom):
         resp = oohoom.simulate_get(
-            "/v1/users/Hassan", headers={"Authorization": g["token"]}
+            "/v1/users/An_Employee", headers={"Authorization": g["token"]}
         )
         assert type(resp.json) == dict
-        assert resp.json["name"] == "hassan"
+        assert resp.json["name"] == "an_employee"
 
     def test_get_user_by_invalid_name(self, oohoom):
         resp = oohoom.simulate_get(
-            "/v1/users/Hassan-", headers={"Authorization": g["token"]}
+            "/v1/users/An_Employee-", headers={"Authorization": g["token"]}
         )
         assert resp.status_code == 404

@@ -1,7 +1,7 @@
-import datetime
 import os
 import string
 from random import SystemRandom
+from datetime import datetime
 
 import falcon
 from bson.objectid import ObjectId
@@ -185,6 +185,42 @@ class EmployeesResource(object):
         resp.media = employees
 
 
+class ProjectResource(object):
+    @falcon.before(auth)
+    @falcon.before(
+        validate_req,
+        {
+            "title": {"type": "string", "minlength": 1, "maxlength": 88},
+            "description": {"type": "string", "minlength": 0, "maxlength": 500},
+            "skills": {
+                "type": "list",
+                "schema": {"type": "string", "minlength": 1, "maxlength": 36},
+                "maxlength": 30,
+            },
+        },
+    )
+    def on_post(self, req, resp):
+        employer = db.users.find_one(
+            {"_id": req.context.user_id, "role": "employer"},
+            projection={"_id": 1, "name": 1},
+        )
+        if employer is None:
+            raise falcon.errors.HTTPForbidden(
+                description="You must be an employer to post a project."
+            )
+        result = db.projects.insert_one(
+            {
+                "title": req.media.get("title"),
+                "description": req.media.get("description"),
+                "employer": {"_id": req.context.user_id, "name": employer.get("name")},
+                "state": "new",
+                "skills": req.media.get("skills"),
+                "creation_datetime": datetime.utcnow(),
+            }
+        )
+        resp.media = {"_id": str(result.inserted_id)}
+
+
 class TestResource(object):
     def on_get(self, req, resp):
         resp.media = {"ok": True}
@@ -212,6 +248,7 @@ def create_app(is_testing=False):
     code = CodeResource()
     token = TokenResource()
     employees = EmployeesResource()
+    project = ProjectResource()
 
     app.add_route("/v1/test", test)
     app.add_route("/v1/user", user)
@@ -219,6 +256,7 @@ def create_app(is_testing=False):
     app.add_route("/v1/code", code)
     app.add_route("/v1/token", token)
     app.add_route("/v1/employees", employees)
+    app.add_route("/v1/project", project)
     return app
 
 
