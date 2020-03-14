@@ -15,6 +15,7 @@ from .hooks import auth, validate_req
 from .jwt_user_id import user_to_token
 from .local_config import KAVENEGAR_APIKEY
 from .utils import normalized_mobile
+from .converters import UserNameConverter
 
 client = MongoClient()
 db = client.test_oohoom
@@ -33,13 +34,27 @@ class UserResource(object):
         user["_id"] = str(user["_id"])
         resp.media = user
 
+    def on_get_name(self, req, resp, name):
+        user = db.users.find_one(
+            {"name": name},
+            projection={"_id": 0, "name": 1, "role": 1, "state": 1, "skills": 1},
+        )
+        if user is None:
+            raise falcon.errors.HTTPNotFound(description="user not found")
+        resp.media = user
+
     # registration
     @falcon.before(
         validate_req,
         {
             "code": {"type": "string"},
             "mobile": {"type": "string", "minlength": 5, "maxlength": 30},
-            "name": {"type": "string", "maxlength": 36, "minlength": 1},
+            "name": {
+                "type": "string",
+                "maxlength": 36,
+                "minlength": 1,
+                "regex": "^[a-z0-9_]+$",
+            },
             "role": {"type": "string", "allowed": ["employer", "employee"]},
             "skills": {
                 "type": "list",
@@ -179,6 +194,9 @@ def create_app(is_testing=False):
         print("production db")
         client = MongoClient()
         db = client.oohoom
+
+    app.router_options.converters["user_name"] = UserNameConverter
+
     test = TestResource()
     user = UserResource()
     code = CodeResource()
@@ -187,6 +205,7 @@ def create_app(is_testing=False):
 
     app.add_route("/v1/test", test)
     app.add_route("/v1/user", user)
+    app.add_route("/v1/users/{name:user_name}", user, suffix="name")
     app.add_route("/v1/code", code)
     app.add_route("/v1/token", token)
     app.add_route("/v1/employees", employees)

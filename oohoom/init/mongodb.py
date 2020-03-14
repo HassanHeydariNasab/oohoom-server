@@ -10,14 +10,19 @@ def init(is_testing=False):
         is_confirmed = "no"
         is_confirmed = input("Delete main database? (yes / [no]) :  ")
         if is_confirmed != "yes":
-            print('bye')
+            print("bye")
             return False
         client = MongoClient()
         client.drop_database("oohoom")
-        print('deleted')
+        print("deleted")
         db = client.oohoom
 
-    user_name = {"bsonType": "string", "minLength": 1, "maxLength": 36}
+    user_name = {
+        "bsonType": "string",
+        "minLength": 1,
+        "maxLength": 36,
+        "pattern": "^[a-z0-9_]+$",
+    }
 
     db.create_collection(
         "users",
@@ -118,5 +123,5 @@ def init(is_testing=False):
             }
         },
     )
-    print('created')
+    print("created")
     return True

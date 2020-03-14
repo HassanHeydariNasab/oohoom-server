@@ -39,7 +39,7 @@ class TestRegistration:
             json={
                 "code": code.decode(),
                 "mobile": MOBILE,
-                "name": "Hassan",
+                "name": "hassan",
                 "role": "employee",
                 "skills": [],
             },
@@ -70,3 +70,16 @@ class TestRegistration:
         )
         assert type(resp.json) == list
         assert len(resp.json) == 1
+
+    def test_get_user_by_name(self, oohoom):
+        resp = oohoom.simulate_get(
+            "/v1/users/Hassan", headers={"Authorization": g["token"]}
+        )
+        assert type(resp.json) == dict
+        assert resp.json["name"] == "hassan"
+
+    def test_get_user_by_invalid_name(self, oohoom):
+        resp = oohoom.simulate_get(
+            "/v1/users/Hassan-", headers={"Authorization": g["token"]}
+        )
+        assert resp.status_code == 404
