@@ -75,7 +75,17 @@ class UserResource(object):
             )
             is not None
         ):
-            raise falcon.errors.HTTPConflict(description="user already exists")
+            raise falcon.errors.HTTPConflict(
+                title="mobile",
+                description="A user with this mobile number already exists",
+            )
+        if (
+            db.users.find_one({"name": req.media.get("name")}, projection={"name": 1})
+            is not None
+        ):
+            raise falcon.errors.HTTPConflict(
+                title="name", description="A user with this name already exists"
+            )
         result = db.users.insert_one(
             {
                 "mobile": req.media.get("mobile"),

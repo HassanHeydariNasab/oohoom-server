@@ -41,6 +41,9 @@ def init(is_testing=False):
         },
     )
 
+    db.users.create_index('mobile', unique=True)
+    db.users.create_index('name', unique=True)
+
     db.create_collection(
         "projects",
         validator={
