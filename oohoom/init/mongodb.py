@@ -21,7 +21,7 @@ def init(is_testing=False):
         "bsonType": "string",
         "minLength": 1,
         "maxLength": 36,
-        "pattern": "^[a-z0-9_]+$",
+        "pattern": "^(?!(me)$)[a-z0-9_]+$",
     }
 
     db.create_collection(

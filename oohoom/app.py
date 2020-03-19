@@ -5,6 +5,7 @@ from datetime import datetime
 
 import falcon
 from bson.objectid import ObjectId
+from bson.json_util import dumps
 from kavenegar import KavenegarAPI
 from pymongo import MongoClient
 from pymongo.collection import ReturnDocument
@@ -20,28 +21,59 @@ from .converters import UserNameConverter
 client = MongoClient()
 db = client.test_oohoom
 
-is_debugging = False  # manually enable testing situation (db,...)
+is_debugging = True  # manually enable testing situation (db,...)
 global_is_testing = is_debugging
 
 
 class UserResource(object):
-    @falcon.before(auth)
+    @falcon.before(
+        validate_req,
+        {
+            "role": {
+                "type": "string",
+                "regex": "^(employer|employee|all)$",
+                "default": "all",
+            },
+            "state": {
+                "type": "string",
+                "regex": "^(idle|busy|all)$",
+                "default": "all",
+            },
+            "skip": {"type": "integer", "coerce": int, "min": 0, "default": 0},
+            "limit": {"type": "integer", "coerce": int, "min": 1, "default": LIMIT},
+        },
+        require_all=False,
+        produce_filter=True,
+    )
     def on_get(self, req, resp):
+        users = list(
+            db.users.find(
+                req.context.filter,
+                skip=req.context.params.get("skip"),
+                limit=req.context.params.get("limit"),
+                projection={"_id": 1, "name": 1, "role": 1, "state": 1, "skills": 1},
+            )
+        )
+        # TODO: sort employees by rank
+        resp.body = dumps(users)
+
+    def on_get_name(self, req, resp, name):
+        user = db.users.find_one(
+            {"name": name},
+            projection={"_id": 1, "name": 1, "role": 1, "state": 1, "skills": 1},
+        )
+        if user is None:
+            raise falcon.errors.HTTPNotFound(description="user not found")
+        resp.body = dumps(user)
+
+    @falcon.before(auth)
+    def on_get_me(self, req, resp):
         user = db.users.find_one({"_id": req.context.user_id})
         # a rare case
         if user is None:
             raise falcon.errors.HTTPNotFound(description="user not found")
         user["_id"] = str(user["_id"])
-        resp.media = user
-
-    def on_get_name(self, req, resp, name):
-        user = db.users.find_one(
-            {"name": name},
-            projection={"_id": 0, "name": 1, "role": 1, "state": 1, "skills": 1},
-        )
-        if user is None:
-            raise falcon.errors.HTTPNotFound(description="user not found")
-        resp.media = user
+        resp.body = dumps(user)
 
     # registration
     @falcon.before(
@@ -53,7 +85,7 @@ class UserResource(object):
                 "type": "string",
                 "maxlength": 36,
                 "minlength": 1,
-                "regex": "^[a-z0-9_]+$",
+                "regex": "^(?!(me)$)[a-z0-9_]+$",
             },
             "role": {"type": "string", "allowed": ["employer", "employee"]},
             "skills": {
@@ -158,33 +190,6 @@ class TokenResource(object):
         resp.media = {"token": token}
 
 
-class EmployeesResource(object):
-    @falcon.before(auth)
-    def on_get(self, req, resp):
-        state = req.get_param("state", default="all")
-        if state == "all":
-            filter_ = {"role": "employee"}
-        elif state in ["idle", "busy"]:
-            filter_ = {"role": "employee", "state": state}
-        else:
-            raise falcon.errors.HTTPInvalidParam(
-                "state should be all or idle or busy", "state"
-            )
-
-        employees = list(
-            db.users.find(
-                filter_,
-                skip=req.get_param("skip", default=0),
-                limit=req.get_param("limit", default=LIMIT),
-                projection={"_id": 1, "name": 1, "state": 1},
-            )
-        )
-        # TODO: sort employees by rank
-        for employee in employees:
-            employee["_id"] = str(employee.get("_id"))
-        resp.media = employees
-
-
 class ProjectResource(object):
     @falcon.before(auth)
     @falcon.before(
@@ -220,6 +225,37 @@ class ProjectResource(object):
         )
         resp.media = {"_id": str(result.inserted_id)}
 
+    @falcon.before(
+        validate_req,
+        {
+            "state": {
+                "type": "string",
+                "regex": "^(new|assigned|done|closed|all)$",
+                "default": "all",
+            },
+            "skip": {"type": "integer", "coerce": int, "min": 0, "default": 0},
+            "limit": {"type": "integer", "coerce": int, "min": 1, "default": LIMIT},
+        },
+        require_all=False,
+        produce_filter=True,
+    )
+    def on_get(self, req, resp):
+        projects = list(
+            db.projects.find(
+                req.context.filter,
+                skip=req.context.params.get("skip"),
+                limit=req.context.params.get("limit"),
+            )
+        )
+        # TODO: sort projects according to skills
+        resp.body = dumps(projects)
+
+    def on_get_title(self, req, resp, title):
+        project = db.project.find_one({"title": title})
+        if project is None:
+            raise falcon.errors.HTTPNotFound(description="project not found")
+        resp.body = dumps(project)
+
 
 class TestResource(object):
     def on_get(self, req, resp):
@@ -247,16 +283,16 @@ def create_app(is_testing=False):
     user = UserResource()
     code = CodeResource()
     token = TokenResource()
-    employees = EmployeesResource()
     project = ProjectResource()
 
     app.add_route("/v1/test", test)
-    app.add_route("/v1/user", user)
+    app.add_route("/v1/users", user)
+    app.add_route("/v1/users/me", user, suffix="me")
     app.add_route("/v1/users/{name:user_name}", user, suffix="name")
     app.add_route("/v1/code", code)
     app.add_route("/v1/token", token)
-    app.add_route("/v1/employees", employees)
-    app.add_route("/v1/project", project)
+    app.add_route("/v1/projects", project)
+    app.add_route("/v1/projects/{title}", project, suffix="title")
     return app
 
 

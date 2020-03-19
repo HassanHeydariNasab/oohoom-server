@@ -32,7 +32,7 @@ class TestProject:
         code = r_code.r_mobile_code.get(MOBILE)
         assert code
         resp = oohoom.simulate_post(
-            "/v1/user",
+            "/v1/users",
             json={
                 "code": code.decode(),
                 "mobile": MOBILE,
@@ -46,7 +46,7 @@ class TestProject:
 
     def test_post_project(self, oohoom):
         resp = oohoom.simulate_post(
-            "/v1/project",
+            "/v1/projects",
             json={
                 "title": "A project",
                 "description": "This is a project",

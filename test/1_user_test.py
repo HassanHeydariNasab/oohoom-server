@@ -35,7 +35,7 @@ class TestRegistration:
         code = r_code.r_mobile_code.get(MOBILE)
         assert code
         resp = oohoom.simulate_post(
-            "/v1/user",
+            "/v1/users",
             json={
                 "code": code.decode(),
                 "mobile": MOBILE,
@@ -61,12 +61,14 @@ class TestRegistration:
         g["token"] = resp.json["token"]
 
     def test_get_user(self, oohoom):
-        resp = oohoom.simulate_get("/v1/user", headers={"Authorization": g["token"]})
+        resp = oohoom.simulate_get(
+            "/v1/users/me", headers={"Authorization": g["token"]}
+        )
         assert "_id" in resp.json
 
     def test_get_employees(self, oohoom):
         resp = oohoom.simulate_get(
-            "/v1/employees", headers={"Authorization": g["token"]}
+            "/v1/users?role=employee", headers={"Authorization": g["token"]}
         )
         assert type(resp.json) == list
         assert len(resp.json) == 1
