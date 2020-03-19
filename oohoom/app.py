@@ -1,14 +1,11 @@
-import os
 import string
 from random import SystemRandom
 from datetime import datetime
 
 import falcon
-from bson.objectid import ObjectId
 from bson.json_util import dumps
 from kavenegar import KavenegarAPI
 from pymongo import MongoClient
-from pymongo.collection import ReturnDocument
 
 from . import r_code
 from .constants import LIMIT

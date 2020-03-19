@@ -1,6 +1,5 @@
 import pytest
 from falcon import testing
-from pymongo import MongoClient
 
 from ..oohoom import app, r_code
 
