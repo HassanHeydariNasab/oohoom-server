@@ -54,3 +54,13 @@ class TestProject:
             headers={"Authorization": g["token"]},
         )
         assert "_id" in resp.json
+
+    def test_get_projects(self, oohoom):
+        resp = oohoom.simulate_get("/v1/projects")
+        assert type(resp.json) == list
+        assert len(resp.json) == 1
+
+    def test_get_project_title(self, oohoom):
+        resp = oohoom.simulate_get("/v1/projects/A project")
+        assert type(resp.json) == dict
+        assert "_id" in resp.json

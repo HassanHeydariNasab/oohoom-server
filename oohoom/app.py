@@ -248,7 +248,7 @@ class ProjectResource(object):
         resp.body = dumps(projects)
 
     def on_get_title(self, req, resp, title):
-        project = db.project.find_one({"title": title})
+        project = db.projects.find_one({"title": title})
         if project is None:
             raise falcon.errors.HTTPNotFound(description="project not found")
         resp.body = dumps(project)
