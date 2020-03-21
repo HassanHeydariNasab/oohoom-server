@@ -210,6 +210,9 @@ class ProjectResource(object):
             raise falcon.errors.HTTPForbidden(
                 description="You must be an employer to post a project."
             )
+        project = db.projects.find_one({'title': req.media.get("title")})
+        if project is not None:
+            raise falcon.errors.HTTPConflict(description='This title already exists.')
         result = db.projects.insert_one(
             {
                 "title": req.media.get("title"),

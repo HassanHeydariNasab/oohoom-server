@@ -91,6 +91,8 @@ def init(is_testing=False):
         },
     )
 
+    db.projects.create_index("title", unique=True)
+
     db.create_collection(
         "messages",
         validator={
