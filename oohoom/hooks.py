@@ -1,7 +1,6 @@
 import falcon
 from bson.objectid import ObjectId
-from bson.json_util import loads
-from cerberus import Validator, TypeDefinition
+from cerberus import TypeDefinition, Validator
 
 from .jwt_user_id import token_to_user
 
