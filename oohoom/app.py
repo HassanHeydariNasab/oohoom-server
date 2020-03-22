@@ -256,7 +256,60 @@ class ProjectResource(object):
             raise falcon.errors.HTTPNotFound(description="project not found")
         resp.media = project
 
-        resp.body = dumps(project)
+    @falcon.before(
+        validate_req,
+        {
+            "action": {
+                "type": "string",
+                "regex": "^(assign|update)$",
+                "required": True,
+            },
+            "_id": {"type": "objectid", "required": True},
+            "update": {
+                "type": "dict",
+                "schema": {
+                    "description": {"type": "string", "minlength": 0, "maxlength": 500},
+                    "skills": {
+                        "type": "list",
+                        "schema": {"type": "string", "minlength": 1, "maxlength": 36},
+                        "maxlength": 30,
+                    },
+                },
+                "dependencies": {"action": "update"},
+            },
+        },
+        require_all=False,
+    )
+    # an employer performs this action
+    @falcon.before(auth)
+    def on_patch(self, req, resp):
+        if req.context.params.get("action") == "assign":
+            employee = db.users.find_one(
+                {"_id": req.context.user_id, "role": "employee"},
+                projection={"_id": 1, "name": 1},
+            )
+            if employee is None:
+                raise falcon.errors.HTTPUnauthorized(
+                    description="You must be an employee to accept project."
+                )
+            result = db.projects.update_one(
+                {
+                    "_id": req.context.params.get("_id"),
+                    "employee": {"$exists": False},
+                    "state": "new",
+                },
+                {"$set": {"employee": employee}},
+            )
+            if result.matched_count != 1:
+                raise falcon.errors.HTTPNotFound(description="no new project found")
+
+        elif req.context.params.get("action") == "update":
+            result = db.projects.update_one(
+                {"_id": req.context.params.get("_id")},
+                req.context.params.get("update"),
+            )
+            if result.matched_count != 1:
+                raise falcon.errors.HTTPNotFound(description="project not found")
 
 
 class TestResource(object):
