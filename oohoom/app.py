@@ -279,9 +279,9 @@ class ProjectResource(object):
         },
         require_all=False,
     )
-    # an employer performs this action
     @falcon.before(auth)
     def on_patch(self, req, resp):
+        # employee performs this action
         if req.context.params.get("action") == "assign":
             employee = db.users.find_one(
                 {"_id": req.context.user_id, "role": "employee"},
@@ -301,7 +301,7 @@ class ProjectResource(object):
             )
             if result.matched_count != 1:
                 raise falcon.errors.HTTPNotFound(description="no new project found")
-
+        # employer performs this action
         elif req.context.params.get("action") == "update":
             result = db.projects.update_one(
                 {"_id": req.context.params.get("_id")},
