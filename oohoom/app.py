@@ -3,7 +3,8 @@ from random import SystemRandom
 from datetime import datetime
 
 import falcon
-from bson.json_util import dumps
+from bson.json_util import dumps, loads
+from bson.objectid import ObjectId
 from kavenegar import KavenegarAPI
 from pymongo import MongoClient
 
@@ -52,7 +53,7 @@ class UserResource(object):
             )
         )
         # TODO: sort employees by rank
-        resp.body = dumps(users)
+        resp.media = users
 
     def on_get_name(self, req, resp, name):
         user = db.users.find_one(
@@ -61,7 +62,7 @@ class UserResource(object):
         )
         if user is None:
             raise falcon.errors.HTTPNotFound(description="user not found")
-        resp.body = dumps(user)
+        resp.media = user
 
     @falcon.before(auth)
     def on_get_me(self, req, resp):
@@ -69,8 +70,7 @@ class UserResource(object):
         # a rare case
         if user is None:
             raise falcon.errors.HTTPNotFound(description="user not found")
-        user["_id"] = str(user["_id"])
-        resp.body = dumps(user)
+        resp.media = user
 
     # registration
     @falcon.before(
@@ -210,9 +210,9 @@ class ProjectResource(object):
             raise falcon.errors.HTTPForbidden(
                 description="You must be an employer to post a project."
             )
-        project = db.projects.find_one({'title': req.media.get("title")})
+        project = db.projects.find_one({"title": req.media.get("title")})
         if project is not None:
-            raise falcon.errors.HTTPConflict(description='This title already exists.')
+            raise falcon.errors.HTTPConflict(description="This title already exists.")
         result = db.projects.insert_one(
             {
                 "title": req.media.get("title"),
@@ -248,12 +248,14 @@ class ProjectResource(object):
             )
         )
         # TODO: sort projects according to skills
-        resp.body = dumps(projects)
+        resp.media = projects
 
     def on_get_title(self, req, resp, title):
         project = db.projects.find_one({"title": title})
         if project is None:
             raise falcon.errors.HTTPNotFound(description="project not found")
+        resp.media = project
+
         resp.body = dumps(project)
 
 
@@ -278,6 +280,13 @@ def create_app(is_testing=False):
         db = client.oohoom
 
     app.router_options.converters["user_name"] = UserNameConverter
+
+    json_handler = falcon.media.JSONHandler(dumps=dumps, loads=loads,)
+    extra_handlers = {
+        "application/json": json_handler,
+    }
+    app.req_options.media_handlers.update(extra_handlers)
+    app.resp_options.media_handlers.update(extra_handlers)
 
     test = TestResource()
     user = UserResource()

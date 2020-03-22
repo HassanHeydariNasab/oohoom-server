@@ -1,6 +1,7 @@
 import falcon
 from bson.objectid import ObjectId
-from cerberus import Validator
+from bson.json_util import loads
+from cerberus import Validator, TypeDefinition
 
 from .jwt_user_id import token_to_user
 
@@ -37,7 +38,11 @@ def validate_req(
             ["POST", "PUT", "PATCH", "GET"],
             description="parameter validation is not implemented for this method",
         )
+
+    objectid_type = TypeDefinition("objectid", (ObjectId,), ())
+    Validator.types_mapping["objectid"] = objectid_type
     V = Validator(schema, require_all=require_all, purge_unknown=purge_unknown)
+
     d = V.normalized(d)
     req.context.params = d
     if not V.validate(d):
