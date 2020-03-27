@@ -302,10 +302,13 @@ class ProjectResource(object):
             if result.matched_count != 1:
                 raise falcon.errors.HTTPNotFound(description="no new project found")
         # employer performs this action
-        elif req.context.params.get("action") == "update":
+        elif (
+            req.context.params.get("action") == "update"
+            and req.context.params.get("update") is not None
+        ):
             result = db.projects.update_one(
                 {"_id": req.context.params.get("_id")},
-                req.context.params.get("update"),
+                {"$set": req.context.params.get("update")},
             )
             if result.matched_count != 1:
                 raise falcon.errors.HTTPNotFound(description="project not found")

@@ -4,7 +4,8 @@ from falcon import testing
 from ..oohoom import app, r_code
 
 
-MOBILE = "00989352904135"
+EMPLOYER_MOBILE = "00989352904135"
+EMPLOYEE_MOBILE = "00989389742591"
 
 
 @pytest.fixture(scope="function")
@@ -24,17 +25,17 @@ def test_test(oohoom):
 @pytest.mark.incremental
 class TestProject:
     def test_post_code(self, oohoom):
-        resp = oohoom.simulate_post("/v1/code", json={"mobile": MOBILE})
+        resp = oohoom.simulate_post("/v1/code", json={"mobile": EMPLOYER_MOBILE})
         assert resp.json == {"is_user_exists": False}
 
     def test_post_user(self, oohoom):
-        code = r_code.r_mobile_code.get(MOBILE)
+        code = r_code.r_mobile_code.get(EMPLOYER_MOBILE)
         assert code
         resp = oohoom.simulate_post(
             "/v1/users",
             json={
                 "code": code.decode(),
-                "mobile": MOBILE,
+                "mobile": EMPLOYER_MOBILE,
                 "name": "an_employer",
                 "role": "employer",
                 "skills": [],
@@ -48,7 +49,7 @@ class TestProject:
             "/v1/projects",
             json={
                 "title": "A project",
-                "description": "This is a project",
+                "description": "This is a project.",
                 "skills": ["test", "testing", "tested"],
             },
             headers={"Authorization": g["token"]},
@@ -64,3 +65,42 @@ class TestProject:
         resp = oohoom.simulate_get("/v1/projects/A project")
         assert type(resp.json) == dict
         assert "_id" in resp.json
+        g["project_id"] = resp.json.get("_id")
+
+    # switch to employee
+    def test_post_code_again(self, oohoom):
+        resp = oohoom.simulate_post("/v1/code", json={"mobile": EMPLOYEE_MOBILE})
+        assert resp.json == {"is_user_exists": True}
+
+    def test_post_token(self, oohoom):
+        code = r_code.r_mobile_code.get(EMPLOYEE_MOBILE)
+        assert code
+        resp = oohoom.simulate_post(
+            "/v1/token", json={"code": code.decode(), "mobile": EMPLOYEE_MOBILE},
+        )
+        assert "token" in resp.json
+        g["token"] = resp.json["token"]
+
+    def test_patch_project_assign(self, oohoom):
+        resp = oohoom.simulate_patch(
+            "/v1/projects",
+            json={"_id": g["project_id"], "action": "assign"},
+            headers={"Authorization": g["token"]},
+        )
+        assert resp.status_code == 200
+
+    def test_patch_project_update(self, oohoom):
+        resp = oohoom.simulate_patch(
+            "/v1/projects",
+            json={
+                "_id": g["project_id"],
+                "action": "update",
+                "update": {"description": "This is an updated project."},
+            },
+            headers={"Authorization": g["token"]},
+        )
+        assert resp.status_code == 200
+        resp = oohoom.simulate_get(
+            "/v1/projects/A%20project", headers={"Authorization": g["token"]},
+        )
+        assert "This is an updated project." == resp.json.get("description")

@@ -4,7 +4,7 @@ from falcon import testing
 from ..oohoom import app, r_code
 from ..oohoom.init import mongodb
 
-MOBILE = "00989389742591"
+EMPLOYEE_MOBILE = "00989389742591"
 
 
 @pytest.fixture(scope="function")
@@ -27,17 +27,17 @@ class TestRegistration:
         assert mongodb.init(is_testing=True)
 
     def test_post_code(self, oohoom):
-        resp = oohoom.simulate_post("/v1/code", json={"mobile": MOBILE})
+        resp = oohoom.simulate_post("/v1/code", json={"mobile": EMPLOYEE_MOBILE})
         assert resp.json == {"is_user_exists": False}
 
     def test_post_user(self, oohoom):
-        code = r_code.r_mobile_code.get(MOBILE)
+        code = r_code.r_mobile_code.get(EMPLOYEE_MOBILE)
         assert code
         resp = oohoom.simulate_post(
             "/v1/users",
             json={
                 "code": code.decode(),
-                "mobile": MOBILE,
+                "mobile": EMPLOYEE_MOBILE,
                 "name": "an_employee",
                 "role": "employee",
                 "skills": [],
@@ -47,14 +47,14 @@ class TestRegistration:
         g["token"] = resp.json["token"]
 
     def test_post_code_again(self, oohoom):
-        resp = oohoom.simulate_post("/v1/code", json={"mobile": MOBILE})
+        resp = oohoom.simulate_post("/v1/code", json={"mobile": EMPLOYEE_MOBILE})
         assert resp.json == {"is_user_exists": True}
 
     def test_post_token(self, oohoom):
-        code = r_code.r_mobile_code.get(MOBILE)
+        code = r_code.r_mobile_code.get(EMPLOYEE_MOBILE)
         assert code
         resp = oohoom.simulate_post(
-            "/v1/token", json={"code": code.decode(), "mobile": MOBILE},
+            "/v1/token", json={"code": code.decode(), "mobile": EMPLOYEE_MOBILE},
         )
         assert "token" in resp.json
         g["token"] = resp.json["token"]
