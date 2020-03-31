@@ -176,12 +176,12 @@ class TokenResource(object):
         req.media["mobile"] = normalized_mobile(req.media.get("mobile"))
         if not r_code.is_valid(req.media.get("mobile"), req.media.get("code")):
             raise falcon.errors.HTTPUnauthorized(
-                description="mobile or code is invalid"
+                description={"code": "code is invalid"}
             )
         user = db.users.find_one({"mobile": req.media.get("mobile")})
         if user is None:
             raise falcon.errors.HTTPUnauthorized(
-                description="mobile or code is invalid"
+                description={"code": "code is invalid"}
             )
         token = user_to_token(str(user["_id"]))
         resp.media = {"token": token}
