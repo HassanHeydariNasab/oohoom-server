@@ -14,6 +14,7 @@ from .hooks import auth, validate_req
 from .jwt_user_id import user_to_token
 from .local_config import KAVENEGAR_APIKEY
 from .utils import normalized_mobile
+from .middlewares import cors
 
 client = MongoClient()
 db = client.test_oohoom
@@ -320,7 +321,7 @@ class TestResource(object):
 
 
 def create_app(is_testing=False):
-    app = falcon.App()
+    app = falcon.App(middleware=[cors()])
     global db, global_is_testing
     # create_app was called within a test
     if is_testing:
