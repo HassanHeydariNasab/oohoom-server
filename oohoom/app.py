@@ -12,14 +12,14 @@ from .constants import LIMIT
 from .converters import UserNameConverter
 from .hooks import auth, validate_req
 from .jwt_user_id import user_to_token
-from .local_config import KAVENEGAR_APIKEY
+from .local_config import KAVENEGAR_APIKEY, IS_DEBUGGING
 from .utils import normalized_mobile
 from .middlewares import cors
 
 client = MongoClient()
 db = client.test_oohoom
 
-is_debugging = True  # manually enable testing situation (db,...)
+is_debugging = IS_DEBUGGING  # manually enable testing situation (db,...)
 global_is_testing = is_debugging
 
 
