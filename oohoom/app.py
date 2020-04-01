@@ -96,7 +96,7 @@ class UserResource(object):
         req.media["mobile"] = normalized_mobile(req.media.get("mobile"))
         if not r_code.is_valid(req.media.get("mobile"), req.media.get("code")):
             raise falcon.errors.HTTPUnauthorized(
-                description="mobile or code is invalid"
+                description={"code": "code is invalid"}
             )
         if (
             db.users.find_one(
@@ -106,14 +106,15 @@ class UserResource(object):
         ):
             raise falcon.errors.HTTPConflict(
                 title="mobile",
-                description="A user with this mobile number already exists",
+                description={"mobile": "A user with this mobile number already exists"},
             )
         if (
             db.users.find_one({"name": req.media.get("name")}, projection={"name": 1})
             is not None
         ):
             raise falcon.errors.HTTPConflict(
-                title="name", description="A user with this name already exists"
+                title="name",
+                description={"name": "A user with this name already exists"},
             )
         result = db.users.insert_one(
             {
@@ -212,7 +213,9 @@ class ProjectResource(object):
             )
         project = db.projects.find_one({"title": req.media.get("title")})
         if project is not None:
-            raise falcon.errors.HTTPConflict(description="This title already exists.")
+            raise falcon.errors.HTTPConflict(
+                description={"title": "This title already exists."}
+            )
         result = db.projects.insert_one(
             {
                 "title": req.media.get("title"),
