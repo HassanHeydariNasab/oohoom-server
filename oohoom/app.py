@@ -95,7 +95,7 @@ class UserResource(object):
     def on_post(self, req, resp):
         req.media["mobile"] = normalized_mobile(req.media.get("mobile"))
         if not r_code.is_valid(req.media.get("mobile"), req.media.get("code")):
-            raise falcon.errors.HTTPUnauthorized(
+            raise falcon.errors.HTTPBadRequest(
                 description={"code": "code is invalid"}
             )
         if (
@@ -176,12 +176,12 @@ class TokenResource(object):
     def on_post(self, req, resp):
         req.media["mobile"] = normalized_mobile(req.media.get("mobile"))
         if not r_code.is_valid(req.media.get("mobile"), req.media.get("code")):
-            raise falcon.errors.HTTPUnauthorized(
+            raise falcon.errors.HTTPBadRequest(
                 description={"code": "code is invalid"}
             )
         user = db.users.find_one({"mobile": req.media.get("mobile")})
         if user is None:
-            raise falcon.errors.HTTPUnauthorized(
+            raise falcon.errors.HTTPBadRequest(
                 description={"code": "code is invalid"}
             )
         token = user_to_token(str(user["_id"]))
