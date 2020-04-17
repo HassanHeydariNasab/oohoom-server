@@ -226,7 +226,7 @@ class ProjectResource(object):
                 "creation_datetime": datetime.utcnow(),
             }
         )
-        resp.media = {"_id": str(result.inserted_id)}
+        resp.media = {"_id": result.inserted_id}
 
     @falcon.before(
         validate_req,
