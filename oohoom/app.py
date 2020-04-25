@@ -5,7 +5,7 @@ from random import SystemRandom
 import falcon
 from bson.json_util import dumps, loads
 from kavenegar import KavenegarAPI
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from . import r_code
 from .constants import LIMIT
@@ -242,7 +242,7 @@ class ProjectResource(object):
                 req.context.filter,
                 skip=req.context.params.get("skip"),
                 limit=req.context.params.get("limit"),
-            )
+            ).sort("_id", DESCENDING)
         )
         # TODO: sort projects according to skills
         resp.media = projects
