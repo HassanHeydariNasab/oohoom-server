@@ -1,9 +1,15 @@
 import string
+import os
+import io
+from random import SystemRandom
 from datetime import datetime
 from random import SystemRandom
 
 import falcon
+from falcon.request import Request
+from falcon.response import Response 
 from bson.json_util import dumps, loads
+from bson import ObjectId
 from kavenegar import KavenegarAPI
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
@@ -295,7 +301,7 @@ class ProjectResource(object):
                     "employee": {"$exists": False},
                     "state": "new",
                 },
-                {"$set": {"employee": employee}},
+                {"$set": {"employee": employee, "state": "assigned"}},
             )
             if result.matched_count == 1:
                 resp.media = result.raw_result
@@ -314,6 +320,28 @@ class ProjectResource(object):
                 resp.media = result.raw_result
             else:
                 raise falcon.errors.HTTPNotFound(description="project not found")
+
+
+class FileResource(object):
+    @falcon.before(auth)
+    def on_post(self, req: Request, resp: Response):
+        if req.content_type.split(';')[0] == 'multipart/form-data':
+            file_ = {'creation_datetime': datetime.utcnow()}
+            for part in req.media:
+                if part.name == 'file':
+                    file_['title'] = part.secure_filename
+                    temp_filename = ''.join(SystemRandom().choice(string.digits+string.ascii_lowercase) for digit in range(32))
+                    with io.open(os.path.join('uploads', 'files', temp_filename), 'wb') as dest:
+                        part.stream.pipe(dest) 
+                elif part.name == 'project':
+                    file_['project'] = ObjectId(part.text)
+                elif part.name == 'kind':
+                    file_['kind'] = part.text
+            result = db.files.insert_one(file_)
+            os.rename(os.path.join('uploads', 'files', temp_filename), os.path.join('uploads', 'files', str(result.inserted_id)))
+            resp.status = falcon.HTTP_201
+        else:
+            raise falcon.errors.HTTPUnsupportedMediaType(title='multipart/form-data required')
 
 
 class TestResource(object):
@@ -339,8 +367,10 @@ def create_app(is_testing=False):
     app.router_options.converters["user_name"] = UserNameConverter
 
     json_handler = falcon.media.JSONHandler(dumps=dumps, loads=loads,)
+    form_handler = falcon.media.MultipartFormHandler()
     extra_handlers = {
         "application/json": json_handler,
+        'multipart/formdata': form_handler
     }
     app.req_options.media_handlers.update(extra_handlers)
     app.resp_options.media_handlers.update(extra_handlers)
@@ -350,6 +380,7 @@ def create_app(is_testing=False):
     code = CodeResource()
     token = TokenResource()
     project = ProjectResource()
+    file_ = FileResource()
 
     app.add_route("/v1/test", test)
     app.add_route("/v1/users", user)
@@ -359,6 +390,7 @@ def create_app(is_testing=False):
     app.add_route("/v1/token", token)
     app.add_route("/v1/projects", project)
     app.add_route("/v1/projects/{title}", project, suffix="title")
+    app.add_route('/v1/files', file_)
     return app
 
 
