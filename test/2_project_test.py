@@ -43,6 +43,7 @@ class TestProject:
         )
         assert "token" in resp.json
         g["token"] = resp.json["token"]
+        print("employer token:", g["token"])
 
     def test_post_project(self, oohoom):
         resp = oohoom.simulate_post(

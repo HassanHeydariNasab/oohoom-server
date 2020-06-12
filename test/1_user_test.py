@@ -58,6 +58,7 @@ class TestRegistration:
         )
         assert "token" in resp.json
         g["token"] = resp.json["token"]
+        print("employee token:", g["token"])
 
     def test_get_user(self, oohoom):
         resp = oohoom.simulate_get(
