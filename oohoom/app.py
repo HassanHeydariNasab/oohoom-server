@@ -254,8 +254,8 @@ class ProjectResource(object):
         # TODO: sort projects according to skills
         resp.media = projects
 
-    def on_get_title(self, req, resp, title):
-        project = db.projects.find_one({"title": title})
+    def on_get__id(self, req: Request, resp: Response, _id: ObjectId):
+        project = db.projects.find_one({"_id": _id})
         if project is None:
             raise falcon.errors.HTTPNotFound(description="project not found")
         resp.media = project
@@ -330,64 +330,76 @@ class FileResource(object):
             file_ = {'creation_datetime': datetime.utcnow()}
             for part in req.media:
                 if part.name == 'file':
-                    file_['title'] = part.secure_filename
+                    file_['title'] = part.filename
                     temp_filename = ''.join(SystemRandom().choice(string.digits+string.ascii_lowercase) for digit in range(32))
                     with io.open(os.path.join('uploads', 'files', temp_filename), 'wb') as dest:
                         part.stream.pipe(dest) 
-                elif part.name == 'project':
-                    file_['project'] = ObjectId(part.text)
+                elif part.name == 'project_id':
+                    file_['project_id'] = ObjectId(part.text)
                 elif part.name == 'kind':
                     file_['kind'] = part.text
                     if file_['kind'] not in ['input', 'output']:
+                        os.remove(os.path.join('uploads', 'files', temp_filename)) 
                         raise falcon.errors.HTTPBadRequest(title='`kind` should be `input|output`')
             role = {'input': 'employer._id', 'output': 'employee._id'}
-            project = db.projects.find_one({'_id': file_['project'], role[file_['kind']]: req.context.user_id})
+            project = db.projects.find_one({'_id': file_['project_id'], role[file_['kind']]: req.context.user_id})
             if project is None:
+                os.remove(os.path.join('uploads', 'files', temp_filename)) 
                 raise falcon.errors.HTTPForbidden(title='no such project found for you')
             result = db.files.insert_one(file_)
             os.rename(os.path.join('uploads', 'files', temp_filename), os.path.join('uploads', 'files', str(result.inserted_id)))
             resp.status = falcon.HTTP_201
+            resp.media = {'_id': result.inserted_id}
         else:
             raise falcon.errors.HTTPUnsupportedMediaType(title='multipart/form-data required')
 
-    @falcon.before(auth)
-    def on_get__id(self, req: Request, resp: Response, _id: str):
+    @falcon.before(auth, optional=True)
+    def on_get__id(self, req: Request, resp: Response, _id: ObjectId):
         file_ = db.files.find_one({'_id': _id})
         if file_ is None:
             raise falcon.errors.HTTPNotFound(title='no such file found')
-        project = db.projects.find_one({'_id': file_['project'],
-            '$or':
-                [
-                    {'employer._id': req.context.user_id},
-                    {'employee._id': req.context.user_id}
-                ]
-        })
-        if project is None:
-            raise falcon.errors.HTTPNotFound(title='no such file found for you')
+        if file_['kind'] == 'output':
+            if not req.context.authenticated:
+                raise falcon.errors.HTTPUnauthorized()
+            project = db.projects.find_one({'_id': file_['project_id'],
+                '$or':
+                    [
+                        {'employer._id': req.context.user_id},
+                        {'employee._id': req.context.user_id}
+                    ]
+            })
+            if project is None:
+                raise falcon.errors.HTTPForbidden()
         file_path = os.path.join('uploads', 'files', str(_id))
         resp.stream = io.open(file_path, 'rb')
+        resp.downloadable_as = file_['title']
         resp.content_length = os.path.getsize(file_path)
         resp.content_type = guess_type(file_['title'])[0]
 
-    @falcon.before(auth)
+    @falcon.before(auth, optional=True)
     @falcon.before(validate_req, {
         "project_id": {"type": "string", "required": True},
-    })
+        "kind": {"type": "string", "regex": "^(input|output)$", "default": "input"}
+    }, produce_filter=True, require_all=False)
     def on_get(self, req: Request, resp: Response):
         try:
             project_id = ObjectId(req.context.params['project_id'])
         except:
             raise falcon.errors.HTTPBadRequest(title='invalid project_id')
-        files = db.files.find({'project': project_id})
-        project = db.projects.find_one({'_id': project_id, 
-            '$or':
-                [
-                    {'employer._id': req.context.user_id},
-                    {'employee._id': req.context.user_id}
-                ]
-        })
-        if project is None:
-            raise falcon.errors.HTTPForbidden(title='it\'s not your project')
+        req.context.filter['project_id'] = project_id
+        if req.context.params['kind'] == 'output':
+            if not req.context.authenticated:
+                raise falcon.errors.HTTPUnauthorized()
+            project = db.projects.find_one({'_id': project_id, 
+                '$or':
+                    [
+                        {'employer._id': req.context.user_id},
+                        {'employee._id': req.context.user_id}
+                    ]
+            })
+            if project is None:
+                raise falcon.errors.HTTPForbidden()
+        files = db.files.find(req.context.filter)
         resp.media = list(files)
 
 
@@ -438,7 +450,7 @@ def create_app(is_testing=False):
     app.add_route("/v1/code", code)
     app.add_route("/v1/token", token)
     app.add_route("/v1/projects", project)
-    app.add_route("/v1/projects/{title}", project, suffix="title")
+    app.add_route("/v1/projects/{_id:ObjectId}", project, suffix="_id")
     app.add_route('/v1/files', file_)
     app.add_route('/v1/files/{_id:ObjectId}', file_, suffix='_id')
     return app

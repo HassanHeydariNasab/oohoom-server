@@ -122,9 +122,9 @@ def init(is_testing=False):
         validator={
             "$jsonSchema": {
                 "bsonType": "object",
-                "required": ["project", "kind", "creation_datetime", "title"],
+                "required": ["project_id", "kind", "creation_datetime", "title"],
                 "properties": {
-                    "project": {"bsonType": "objectId"},
+                    "project_id": {"bsonType": "objectId"},
                     "kind": {"bsonType": "string", "enum": ["input", "output"]},
                     "creation_datetime": {"bsonType": "date"},
                     "title": {"bsonType": "string", "minLength": 1, "maxLength": 88},

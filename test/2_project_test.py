@@ -56,17 +56,18 @@ class TestProject:
             headers={"Authorization": g["token"]},
         )
         assert "_id" in resp.json
+        g['project_id'] = resp.json["_id"]
 
     def test_get_projects(self, oohoom):
         resp = oohoom.simulate_get("/v1/projects")
         assert type(resp.json) == list
         assert len(resp.json) == 1
 
-    def test_get_project_title(self, oohoom):
-        resp = oohoom.simulate_get("/v1/projects/A project")
-        assert type(resp.json) == dict
-        assert "_id" in resp.json
-        g["project_id"] = resp.json.get("_id")
+   # def test_get_project_title(self, oohoom):
+   #     resp = oohoom.simulate_get("/v1/projects/A project")
+   #     assert type(resp.json) == dict
+   #     assert "_id" in resp.json
+   #     g["project_id"] = resp.json.get("_id")
 
     # switch to employee
     def test_post_code_again(self, oohoom):
@@ -102,6 +103,6 @@ class TestProject:
         )
         assert resp.status_code == 200
         resp = oohoom.simulate_get(
-            "/v1/projects/A%20project", headers={"Authorization": g["token"]},
+            "/v1/projects/"+g['project_id']['$oid'], headers={"Authorization": g["token"]},
         )
         assert "This is an updated project." == resp.json.get("description")

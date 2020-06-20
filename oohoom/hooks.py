@@ -5,14 +5,18 @@ from cerberus import TypeDefinition, Validator
 from .jwt_user_id import token_to_user
 
 
-def auth(req, resp, resource, params):
+def auth(req, resp, resource, params, optional=False):
     """
         the route needs authentication.
         it produces user_id.
     """
     user_id = token_to_user(req.auth)
     if user_id == "":
+        if optional:
+            req.context.authenticated = False
+            return
         raise falcon.errors.HTTPUnauthorized()
+    req.context.authenticated = True
     req.context.user_id = ObjectId(user_id)
 
 
