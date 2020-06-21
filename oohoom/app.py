@@ -222,6 +222,7 @@ class ProjectResource(object):
                 "title": req.media.get("title"),
                 "description": req.media.get("description"),
                 "employer": {"_id": req.context.user_id, "name": employer.get("name")},
+                "employee": None,
                 "state": "new",
                 "skills": req.media.get("skills"),
                 "creation_datetime": datetime.utcnow(),
@@ -299,7 +300,7 @@ class ProjectResource(object):
             result = db.projects.update_one(
                 {
                     "_id": req.context.params.get("_id"),
-                    "employee": {"$exists": False},
+                    "employee": None,
                     "state": "new",
                 },
                 {"$set": {"employee": employee, "state": "assigned"}},

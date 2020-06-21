@@ -53,6 +53,7 @@ def init(is_testing=False):
                     "title",
                     "description",
                     "employer",
+                    "employee",
                     "state",
                     "skills",
                     "creation_datetime",
@@ -73,7 +74,7 @@ def init(is_testing=False):
                         },
                     },
                     "employee": {
-                        "bsonType": "object",
+                        "bsonType": ["object", "null"],
                         "required": ["_id", "name"],
                         "properties": {
                             "_id": {"bsonType": "objectId"},
