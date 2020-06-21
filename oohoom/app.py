@@ -155,10 +155,11 @@ class CodeResource(object):
             api = KavenegarAPI(KAVENEGAR_APIKEY)
             params = {
                 "receptor": req.media.get("mobile"),
-                "message": "oohoom: " + code,
+                "token": code,
+                "template": "code"
             }
             if not global_is_testing:
-                response = api.sms_send(params)
+                response = api.verify_lookup(params)
                 print(response)
         except Exception as e:
             print("Error [kavenegar]: ", e)
