@@ -99,9 +99,9 @@ def init(is_testing=False):
         validator={
             "$jsonSchema": {
                 "bsonType": "object",
-                "required": ["project", "sender", "creation_datetime", "seen", "body"],
+                "required": ["project_id", "sender", "creation_datetime", "seen", "body"],
                 "properties": {
-                    "project": {"bsonType": "objectId"},
+                    "project_id": {"bsonType": "objectId"},
                     "sender": {
                         "bsonType": "object",
                         "required": ["_id", "name"],

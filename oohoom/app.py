@@ -405,6 +405,65 @@ class FileResource(object):
         resp.media = list(files)
 
 
+class MessageResource(object):
+    @falcon.before(auth)
+    @falcon.before(validate_req, {
+        "project_id": {"type": "objectid"},
+        "body": {"type": "string", "minlength": 1, "maxlength": 500}
+    })
+    def on_post(self, req: Request, resp: Response):
+        project = db.projects.find_one({"_id": req.context.params['project_id'], 
+            '$or':
+                [
+                    {'employer._id': req.context.user_id},
+                    {'employee._id': req.context.user_id}
+                ]
+        })
+        if project is None:
+            raise falcon.errors.HTTPForbidden(title='no such project found for you')
+        user = db.users.find_one({"_id": req.context.user_id}, {'_id': 1, 'name': 1})
+        if user is None:
+            raise falcon.errors.HTTPUnauthorized()
+        message = {
+            "project_id": req.context.params['project_id'],
+            "body": req.context.params['body'],
+            "creation_datetime": datetime.utcnow(),
+            "sender": user,
+            "seen": False,
+        }
+        result = db.messages.insert_one(message)
+        resp.status = falcon.HTTP_CREATED
+        resp.media = {"_id": result.inserted_id, 'project_id': message['project_id']}
+
+    @falcon.before(auth)
+    @falcon.before(validate_req, {
+        "project_id": {"type": "string", "required": True},
+        "skip": {"type": "integer", "coerce": int, "min": 0, "default": 0},
+        "limit": {"type": "integer", "coerce": int, "min": 1, "default": LIMIT},
+    }, produce_filter=True)
+    def on_get(self, req: Request, resp: Response):
+        try:
+            project_id = ObjectId(req.context.params['project_id'])
+        except:
+            raise falcon.errors.HTTPBadRequest(title='invalid project_id')
+        req.context.filter['project_id'] = project_id
+        project = db.projects.find_one({"_id": project_id, 
+            '$or':
+                [
+                    {'employer._id': req.context.user_id},
+                    {'employee._id': req.context.user_id}
+                ]
+        })
+        if project is None:
+            raise falcon.errors.HTTPForbidden(title='no such project found for you')
+        messages = db.messages.find(
+            req.context.filter,
+            limit=req.context.params['limit'], skip=req.context.params['skip']
+        ).sort('creation_datetime', DESCENDING)
+        messages = list(messages)
+        messages.reverse()
+        resp.media = messages 
+
 
 class TestResource(object):
     def on_get(self, req, resp):
@@ -444,6 +503,7 @@ def create_app(is_testing=False):
     token = TokenResource()
     project = ProjectResource()
     file_ = FileResource()
+    messages = MessageResource()
 
     app.add_route("/v1/test", test)
     app.add_route("/v1/users", user)
@@ -455,6 +515,7 @@ def create_app(is_testing=False):
     app.add_route("/v1/projects/{_id:ObjectId}", project, suffix="_id")
     app.add_route('/v1/files', file_)
     app.add_route('/v1/files/{_id:ObjectId}', file_, suffix='_id')
+    app.add_route('/v1/messages', messages)
     return app
 
 
