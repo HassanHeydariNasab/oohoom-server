@@ -9,7 +9,7 @@ flake8 = "*"
 autopep8 = "*"
 
 [packages]
-falcon = "*"
+falcon = "==3.0.0a1"
 gunicorn = "*"
 pymongo = "*"
 redis = "*"
